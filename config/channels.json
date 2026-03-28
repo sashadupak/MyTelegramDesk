@@ -1,0 +1,10 @@
+{
+  "channels": [
+    {
+      "username": "example_jobs_channel",
+      "name": "Example IT Jobs",
+      "category": "IT",
+      "enabled": true
+    }
+  ]
+}

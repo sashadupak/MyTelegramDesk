@@ -1,0 +1,31 @@
+{
+  "name": "Имя Фамилия",
+  "title": "Senior Software Engineer",
+  "intro": "Опытный разработчик с 5+ годами опыта в backend-разработке. Специализируюсь на Python, Go, микросервисной архитектуре и облачных решениях. Ищу интересные проекты с возможностью роста.",
+  "skills": [
+    "Python",
+    "Go",
+    "PostgreSQL",
+    "Docker",
+    "Kubernetes",
+    "AWS",
+    "REST API",
+    "Microservices"
+  ],
+  "experience_years": 5,
+  "languages": ["Русский", "English"],
+  "location": "Москва",
+  "remote_ok": true,
+  "salary_min": null,
+  "linkedin_url": "https://linkedin.com/in/your-profile",
+  "preferred_roles": [
+    "Backend Developer",
+    "Software Engineer",
+    "Tech Lead",
+    "DevOps Engineer"
+  ],
+  "deal_breakers": [
+    "Только офис без удалёнки",
+    "PHP legacy проекты"
+  ]
+}
