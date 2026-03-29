@@ -35,7 +35,14 @@ SERVER_API = "http://127.0.0.1:8642"
 
 class LocalWorker:
     def __init__(self):
-        self.llm = GroqClient(api_key=settings.groq_api_key, model=settings.groq_model)
+        self.llm = GroqClient(
+            api_key=settings.llm_api_key or settings.groq_api_key,
+            model=settings.llm_model,
+            provider=settings.llm_provider,
+            fallback_api_key=settings.groq_api_key if settings.llm_provider != "groq" else None,
+            fallback_provider="groq" if settings.llm_provider != "groq" else None,
+            fallback_model=settings.groq_model,
+        )
         self.extractor = VacancyExtractor(self.llm)
 
         self.profile = settings.load_profile()

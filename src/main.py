@@ -17,7 +17,14 @@ from src.bot.notification_bot import NotificationBot
 class JobSeekerAgent:
     def __init__(self):
         self.db = Database(settings.db_path)
-        self.llm = GroqClient(api_key=settings.groq_api_key, model=settings.groq_model)
+        self.llm = GroqClient(
+            api_key=settings.llm_api_key or settings.groq_api_key,
+            model=settings.llm_model,
+            provider=settings.llm_provider,
+            fallback_api_key=settings.groq_api_key if settings.llm_provider != "groq" else None,
+            fallback_provider="groq" if settings.llm_provider != "groq" else None,
+            fallback_model=settings.groq_model,
+        )
         self.parser = TelegramParser(
             api_id=settings.telegram_api_id,
             api_hash=settings.telegram_api_hash,

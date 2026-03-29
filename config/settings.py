@@ -17,8 +17,13 @@ class Settings(BaseSettings):
     telegram_bot_token: str = Field(..., description="Bot token from @BotFather")
     telegram_owner_id: int = Field(..., description="Your Telegram user ID for notifications")
 
-    # Groq
-    groq_api_key: str = Field(..., description="Groq API key")
+    # LLM Provider
+    llm_provider: str = Field(default="cerebras", description="Primary LLM provider: cerebras, groq")
+    llm_api_key: str = Field(default="", description="Primary LLM API key")
+    llm_model: str = Field(default="llama3.1-8b", description="Primary LLM model")
+
+    # Groq (fallback)
+    groq_api_key: str = Field(default="", description="Groq API key (fallback)")
     groq_model: str = Field(default="llama-3.3-70b-versatile", description="Groq model name")
 
     # Matching
