@@ -3,7 +3,97 @@
     {
       "username": "forproducts",
       "name": "For Products",
-      "category": "IT",
+      "category": "product_jobs",
+      "enabled": true
+    },
+    {
+      "username": "product_jobs",
+      "name": "Вакансии для продактов и проджектов",
+      "category": "product_jobs",
+      "enabled": true
+    },
+    {
+      "username": "productjobgo",
+      "name": "Вакансии для продакт-менеджеров",
+      "category": "product_jobs",
+      "enabled": true
+    },
+    {
+      "username": "projects_jobs",
+      "name": "Projects Jobs — вакансии и аналитика",
+      "category": "product_jobs",
+      "enabled": true
+    },
+    {
+      "username": "morejobs",
+      "name": "Больше джобсов",
+      "category": "general_jobs",
+      "enabled": true
+    },
+    {
+      "username": "careerspace",
+      "name": "careerspace",
+      "category": "general_jobs",
+      "enabled": true
+    },
+    {
+      "username": "newdirections",
+      "name": "New directions: вакансии и стажировки",
+      "category": "general_jobs",
+      "enabled": true
+    },
+    {
+      "username": "ya_jobs_pm",
+      "name": "Яндекс нанимает — PM",
+      "category": "product_jobs",
+      "enabled": true
+    },
+    {
+      "username": "ask_vc",
+      "name": "Спроси VC",
+      "category": "venture",
+      "enabled": true
+    },
+    {
+      "username": "startupoftheday",
+      "name": "Стартап дня. Горный",
+      "category": "venture",
+      "enabled": true
+    },
+    {
+      "username": "cofounder_community",
+      "name": "Кофаундер — стартап-сообщество",
+      "category": "venture",
+      "enabled": true
+    },
+    {
+      "username": "disruptors_official",
+      "name": "Дизраптор",
+      "category": "venture",
+      "enabled": true
+    },
+    {
+      "username": "Startech_networking",
+      "name": "Startech Сообщество",
+      "category": "venture",
+      "enabled": true
+    },
+    {
+      "username": "techsparks",
+      "name": "TechSparks",
+      "category": "tech",
+      "enabled": true
+    },
+    {
+      "username": "aitalenthubnews",
+      "name": "AI Talent Hub",
+      "category": "ai",
+      "enabled": true
+    },
+    {
+      "username": "jobsearchIT",
+      "name": "Job Search IT",
+      "category": "general_jobs",
       "enabled": true
     }
   ]
