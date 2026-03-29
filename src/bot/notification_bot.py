@@ -65,15 +65,18 @@ class NotificationBot:
         score = match_result.get("score", 0)
         rec = match_result.get("recommendation", "")
         rec_emoji = {"strong_apply": "🔥", "apply": "✅", "maybe": "🤔", "skip": "⛔"}.get(rec, "❓")
-        score_bar = "🟢" if score >= 80 else "🟡" if score >= 60 else "🔴"
 
-        # Venture context
-        vf = match_result.get("venture_filter", {})
-        env_type = vf.get("environment_type", "?")
+        # Hook info
+        hook_data = match_result.get("hook", {})
+        hook_text = hook_data.get("hook", "")
+        hook_strength = hook_data.get("hook_strength", 0)
+
+        # Top-5 info
+        top5_data = match_result.get("top5", {})
+        percentile = top5_data.get("percentile", "?")
 
         text = (
-            f"{score_bar} <b>Score: {score}/100</b> {rec_emoji} {rec}\n"
-            f"🏷 {env_type}\n\n"
+            f"{rec_emoji} <b>{rec.upper()}</b> | Score: {score}\n\n"
             f"<b>{vacancy.get('title', 'Без названия')}</b>\n"
             f"🏢 {vacancy.get('company', 'Компания не указана')}\n"
         )
@@ -86,33 +89,24 @@ class NotificationBot:
         if vacancy.get("skills"):
             text += f"🛠 {vacancy['skills']}\n"
 
-        # Dimensions breakdown
-        dims = match_result.get("dimensions", {})
-        if dims:
-            text += "\n<b>Оценка по измерениям:</b>\n"
-            dim_names = {
-                "role_fit": "🎯 Role Fit",
-                "skills_match": "🛠 Skills",
-                "seniority_fit": "📊 Seniority",
-                "competitive_edge": "⚔️ Edge",
-                "growth_potential": "🚀 Growth",
-            }
-            for key, label in dim_names.items():
-                d = dims.get(key, {})
-                d_score = d.get("score", 0)
-                bar = "█" * (d_score // 4) + "░" * (5 - d_score // 4)
-                text += f"  {label}: {bar} {d_score}/20\n"
+        # Hook
+        if hook_text:
+            text += f"\n🪝 <b>Что зацепило:</b>\n{hook_text}\n"
+            text += f"Сила hook: {'🔥' * min(hook_strength, 10)} ({hook_strength}/10)\n"
 
-        # Strengths & gaps
-        strengths = match_result.get("strengths", [])
-        gaps = match_result.get("gaps", [])
-        if strengths:
-            text += f"\n<b>💪 Сильные:</b> {', '.join(strengths[:3])}\n"
-        if gaps:
-            text += f"<b>⚠️ Пробелы:</b> {', '.join(gaps[:3])}\n"
+        # Top-5 analysis
+        if top5_data:
+            text += f"\n🏆 <b>Top-{percentile} из 100 кандидатов</b>\n"
+            if top5_data.get("his_edge"):
+                text += f"⚔️ Преимущество: {top5_data['his_edge']}\n"
+            if top5_data.get("his_weakness"):
+                text += f"⚠️ Слабость: {top5_data['his_weakness']}\n"
+            if top5_data.get("typical_competitors"):
+                text += f"👥 Конкуренты: {top5_data['typical_competitors']}\n"
+            if top5_data.get("verdict"):
+                text += f"📋 {top5_data['verdict']}\n"
 
         text += (
-            f"\n<b>Вердикт:</b>\n{match_result.get('reason', 'N/A')}\n"
             f"\n<b>О компании:</b>\n{company_info.get('summary', 'N/A')}\n"
             f"\n<b>Адаптированное интро:</b>\n<i>{cover_letter}</i>"
         )

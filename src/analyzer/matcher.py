@@ -3,92 +3,92 @@ from pathlib import Path
 from src.llm.groq_client import GroqClient
 from loguru import logger
 
-# Stage 1: Is this a "venture job" at all?
-VENTURE_FILTER_PROMPT = """Ты — эксперт по венчурному рынку труда. Определи, является ли вакансия "venture job".
+# Stage 1: Is there a HOOK? One thing that makes this vacancy special for this candidate?
+HOOK_PROMPT = """Ты — личный карьерный советник Александра Дупака. Ты знаешь его глубоко.
 
-Venture Job — это вакансия в среде риска, скорости и роста ×10. Это НЕ про название позиции, а про СРЕДУ и АМБИЦИЮ команды.
+ЕГО ПРОФИЛЬ:
+- Траектория: Engineer (робототехника 10 лет) → Founder (EdTech, AI-сервисы) → Product Manager (Атом, 10+ команд) → Innovation & AI Lead
+- Суперсила: находить новые бизнес-возможности там, где другие видят путь из А в Б
+- Уникальность: редкое сочетание глубокого инженерного бэкграунда + продуктового мышления + венчурной среды
+- Драйвит: влияние на масштабе, риск, рост ×10, новые рынки
+- Среда: стартапы, венчур, корпоративные инновации, AI, deep tech, space tech
+- Сейчас: AI Business SPb, хакатоны, партнёрства, Claude Agents, ETH Zürich New Space Economy
+- НЕ хочет: рутину, линейные позиции, аутсорс, legacy, "работу за идею"
 
-ДА — venture job, если:
-- Стартап (особенно с инвестициями, акселераторами, трекшном)
-- Венчурный фонд, акселератор, инвестиционная платформа
-- Корпоративные инновации (новый продукт, новое направление, R&D lab)
-- Быстрорастущая tech-компания на стадии scale-up
-- AI/ML/DeepTech/SpaceTech/FinTech/EdTech команда с амбициозной миссией
-- Роли: product, bizdev, investment analyst, scouting, deal flow, new business, growth, operations в growth-среде, engineering lead в стартапе
+ЗАДАЧА: Прочитай вакансию и найди ОДНУ вещь — hook — которая бы заставила Александра остановиться и сказать "О, это интересно!".
 
-НЕТ — не venture job, если:
-- Линейная операционная позиция в стабильной компании
-- Классический малый бизнес (кафе, салоны, локальные услуги)
-- Агентство/аутсорс (кроме работающих со стартапами)
-- "Работа за идею" без нормальной компенсации
-- Чистая разработка в legacy-проекте без инновационного контекста
-- Стажировки ради опыта
-- Линейный backend/frontend/QA в аутсорсе или банке
+Hook может быть:
+- Компания делает что-то на стыке его интересов (AI + space, robotics + бизнес, deep tech + product)
+- Роль подразумевает создание чего-то нового с нуля (new product, new market, 0→1)
+- Команда/фаундер с сильным трекшном и амбицией
+- Уникальная возможность применить его сочетание инженер + продукт + инновации
+- Среда: YC, топ-фонды, быстрый рост, серия A+, корпоративный venture
+- Прямое пересечение с его текущим фокусом (AI agents, new space, innovation programs)
+
+НЕ является hook-ом:
+- "Нужен Python разработчик" (он не чистый разработчик)
+- "Хорошая зарплата" (это не мотиватор)
+- "Удалёнка" (это базовое требование, не hook)
+- "Большая компания" без инновационного контекста
 
 Верни JSON:
 {
-  "is_venture": true/false,
-  "venture_signals": ["сигнал 1", "сигнал 2"],
-  "red_flags": ["красный флаг 1"],
-  "environment_type": "startup | scaleup | corporate_innovation | vc_fund | agency | traditional_corp | small_business | other",
-  "confidence": <0.0-1.0>
+  "has_hook": true/false,
+  "hook": "Одно предложение — что именно цепляет (или null)",
+  "hook_strength": <1-10, где 10 = 'бросить всё и откликнуться'>,
+  "why_not": "Если нет hook-а — почему эта вакансия скучная/не та (или null)"
 }
 
+Будь ОЧЕНЬ избирателен. Hook должен быть у максимум 10-15% вакансий.
 Отвечай ТОЛЬКО валидным JSON."""
 
-# Stage 2: Deep candidate-vacancy fit
-MATCH_PROMPT = """Ты — венчурный рекрутер с 10-летним опытом. Оцени РЕАЛИСТИЧНО, насколько кандидат конкурентоспособен на эту вакансию. Ты видел тысячи кандидатов и умеешь отличать реальный fit от натяжки.
 
-АЛГОРИТМ ОЦЕНКИ (5 измерений, каждое 0-20 баллов):
+# Stage 2: Am I top 5%?
+TOP_CANDIDATE_PROMPT = """Ты — венчурный рекрутер, который нанимал сотни людей. Ты умеешь оценить, кто реально top-кандидат, а кто "ну подходит, наверное".
 
-1. ROLE FIT (0-20): Совпадает ли роль с траекторией кандидата?
-   - 16-20: Прямое попадание (Product Manager → Product Manager, Innovation Lead → Innovation Lead)
-   - 10-15: Смежная роль (Product Manager → BizDev, Program Manager → Operations Lead)
-   - 5-9: Частичное пересечение (инженер-робототехник → ML Engineer, но без ML опыта)
-   - 0-4: Роль из другой области (Product Manager → Senior Java Backend Developer)
+ЗАДАЧА: Представь, что на эту вакансию пришло 100 откликов. Оцени — Александр Дупак попадёт в топ-5 кандидатов?
 
-2. SKILLS MATCH (0-20): Реальное совпадение hard skills
-   - Считай только ПРЯМОЙ опыт, не "может разобраться"
-   - Python для автоматизации ≠ Python для enterprise backend
-   - Product Management, Cross-functional leadership, AI/LLM, Innovation — это его сильные стороны
-   - Kubernetes, Terraform, System Design — НЕ его стек
+ЕГО ПРОФИЛЬ:
+- 10 лет робототехника: дроны, манипуляторы, CV, нелинейные контроллеры, Airalab (4 года)
+- Founder: EdTech платформа (топ-3 BrainBox), AI-агрегатор (1000 юзеров, грант ФСИ)
+- Product Manager Атом: 10+ команд, подрядчики РФ/Китай/Корея, delivery с нуля, AI в продуктовый цикл
+- Program Manager AI Business SPb: хакатоны, партнёрства, AI Shopping Assistant (доклад ИТМО)
+- ИТМО: бакалавр CS/Robotics + магистр Innovation Entrepreneurship (English)
+- Сертификации: AltaLab (Altair Capital), AI Talent Hub (Claude Agents), ETH Zürich (Space), PMI-ACP
+- Английский C1
+- Выступления: Skolkovo, SPB Founders, Product Camp, 50+ конференций
+- Навыки: Product Management, AI/LLM, Python, Cross-functional Leadership, BizDev, Innovation
 
-3. SENIORITY FIT (0-20): Соответствует ли грейд?
-   - Кандидат: 7 лет общего опыта, но специфика в product + robotics + innovation
-   - Если вакансия требует "5+ лет чистого backend" — это НЕ его уровень в этом стеке
-   - Если вакансия на Junior/Intern — overqualified
-   - Если вакансия на C-level enterprise — underqualified
+ПРАВИЛА ОЦЕНКИ:
 
-4. COMPETITIVE EDGE (0-20): Насколько кандидат сильнее среднего претендента?
-   - Уникальное сочетание: инженерный бэкграунд + продукт + инновации + AI
-   - ИТМО, Атом, AI Business SPb, AltaLab — это конкурентные преимущества
-   - Но если вакансия требует то, чего у него нет (5 лет ML research, MBA) — это слабость
-   - Представь 10 типичных кандидатов на эту роль. Будет ли этот в top-3?
+1. Представь 100 типичных кандидатов на эту роль. Кто они? Какой у них опыт?
+2. Чем Александр ОБЪЕКТИВНО сильнее большинства из них?
+3. Чем он ОБЪЕКТИВНО слабее? Что есть у других, чего нет у него?
+4. Попадёт ли он в top-5 из 100?
 
-5. GROWTH POTENTIAL (0-20): Потенциал взаимного роста
-   - Может ли кандидат вырасти ×10 в этой роли?
-   - Может ли компания получить уникальную ценность от его профиля?
-   - Есть ли синергия между его суперсилой (находить новые возможности) и задачами роли?
+КРАСНЫЕ ФЛАГИ (автоматически = НЕ top-5):
+- Вакансия требует 5+ лет в узком стеке (ML research, backend Java, DevOps), которого у него нет
+- Роль чисто техническая без продуктовой/бизнес-составляющей
+- Нужен отраслевой опыт, которого нет (финтех compliance, медицина, юридический)
+- Уровень C-level в enterprise (CEO, CTO крупной компании) — рано
 
-ИТОГО: score = сумма пяти измерений (0-100)
+ЗЕЛЁНЫЕ ФЛАГИ (усиливают позицию):
+- Нужен человек на стыке техники и бизнеса — он один из немногих
+- Стартап ищет product + technical background — идеально
+- AI/innovation роль, где нужен практический опыт запуска — его конёк
+- Нужен человек с предпринимательским мышлением в корпорации — точное попадание
 
 Верни JSON:
 {
-  "score": <0-100>,
-  "dimensions": {
-    "role_fit": {"score": <0-20>, "comment": "..."},
-    "skills_match": {"score": <0-20>, "comment": "..."},
-    "seniority_fit": {"score": <0-20>, "comment": "..."},
-    "competitive_edge": {"score": <0-20>, "comment": "..."},
-    "growth_potential": {"score": <0-20>, "comment": "..."}
-  },
-  "reason": "<2-3 предложения итоговой оценки на русском>",
-  "strengths": ["сильная сторона 1", "сильная сторона 2"],
-  "gaps": ["чего не хватает 1", "чего не хватает 2"],
-  "recommendation": "strong_apply | apply | maybe | skip"
+  "is_top5": true/false,
+  "percentile": <1-100, где 1 = лучший кандидат из 100>,
+  "typical_competitors": "Кто обычно претендует на эту роль (2-3 примера профилей)",
+  "his_edge": "В чём он сильнее типичных кандидатов (или null)",
+  "his_weakness": "В чём слабее (или null)",
+  "verdict": "Одно предложение: почему top-5 или почему нет"
 }
 
-Будь ЧЕСТНЫМ. Лучше пропустить 10 вакансий, чем предложить 1 неподходящую.
+Будь ЖЁСТКИМ и ЧЕСТНЫМ. Top-5 из 100 — это действительно сильная позиция. Не раздавай её щедро.
 Отвечай ТОЛЬКО валидным JSON."""
 
 
@@ -100,7 +100,6 @@ class VacancyMatcher:
 
     @staticmethod
     def extract_resume_text(pdf_path: Path) -> str:
-        """Extract text from PDF resume."""
         text_parts = []
         try:
             with pdfplumber.open(pdf_path) as pdf:
@@ -112,83 +111,20 @@ class VacancyMatcher:
             logger.error("Failed to parse PDF {}: {}", pdf_path, e)
         return "\n".join(text_parts)
 
-    def _build_candidate_context(self) -> str:
-        """Build a detailed text representation of the candidate."""
-        p = self.profile
-        return f"""Имя: {p.get('name', 'N/A')}
-Текущая роль: {p.get('title', 'N/A')}
-Общий опыт: {p.get('experience_years', 'N/A')} лет
-
-КАРЬЕРНАЯ ТРАЕКТОРИЯ (Engineer → Founder → Product):
-
-1. Робототехника (10 лет, с 10 лет): 33 призовых места, собственная робо-платформа,
-   дроны, манипуляторы, компьютерное зрение, нелинейные контроллеры.
-   Airalab — Development Engineer (4 года): проекты для нефтепереработки, беспилотные авто.
-
-2. Предпринимательство: Founder в ITMO TECH — EdTech платформа (топ-3 BrainBox),
-   AI-агрегатор мероприятий (1000 пользователей, партнёры Napoleon IT), грант ФСИ.
-   Выступления: SPB Founders, Skolkovo Startup Village, Product Camp.
-
-3. Product Management: Атом (2 года) — координация 10+ продуктовых и инженерных команд,
-   подрядчики из России, Китая, Южной Кореи. Delivery management с нуля.
-   Инициировал внедрение AI в продуктовый цикл.
-
-4. Сейчас: Program Manager AI Business SPb — хакатоны, партнёрства, AI-проекты для бизнеса.
-   AI Shopping Assistant (доклад на Конгрессе молодых учёных ИТМО, статья в журнале).
-
-ОБРАЗОВАНИЕ: ИТМО — бакалавр CS/Robotics + магистр Innovation Entrepreneurship (English).
-Сертификации: AltaLab (Altair Capital), AI Product Engineering (AI Talent Hub),
-New Space Economy (ETH Zürich), PMI-ACP, МФТИ (лидерство акселераторов).
-
-Навыки: {', '.join(p.get('skills', []))}
-Языки: {', '.join(p.get('languages', []))}
-Локация: {p.get('location', 'N/A')} | Удалёнка: {'Да' if p.get('remote_ok') else 'Нет'}
-
-Желаемые роли: {', '.join(p.get('preferred_roles', []))}
-Deal-breakers: {', '.join(p.get('deal_breakers', []))}
-
-СУПЕРСИЛА: находить новые бизнес-возможности там, где другие видят лишь путь из А в Б.
-Уникальное сочетание: глубокий инженерный бэкграунд + продуктовое мышление + венчурная среда."""
-
-    async def is_venture_job(self, vacancy: dict, raw_text: str = "") -> dict:
-        """Stage 1: Filter — is this a venture job?"""
-        text = raw_text or (
-            f"Вакансия: {vacancy.get('title', 'N/A')}\n"
-            f"Компания: {vacancy.get('company', 'N/A')}\n"
-            f"Описание: {vacancy.get('requirements', 'N/A')}\n"
-            f"Навыки: {vacancy.get('skills', 'N/A')}"
+    async def find_hook(self, vacancy: dict, raw_text: str = "") -> dict:
+        """Stage 1: Is there something that hooks the candidate?"""
+        text = raw_text if raw_text else (
+            f"{vacancy.get('title', '')}\n{vacancy.get('company', '')}\n"
+            f"{vacancy.get('requirements', '')}\n{vacancy.get('skills', '')}"
         )
         try:
-            return await self.llm.chat_json(VENTURE_FILTER_PROMPT, text)
+            return await self.llm.chat_json(HOOK_PROMPT, text)
         except Exception as e:
-            logger.error("Venture filter failed: {}", e)
-            return {"is_venture": False, "confidence": 0}
+            logger.error("Hook detection failed: {}", e)
+            return {"has_hook": False, "hook_strength": 0}
 
-    async def match(self, vacancy: dict, raw_text: str = "") -> dict:
-        """
-        Two-stage matching:
-        1. Venture filter — skip non-venture jobs
-        2. Deep multi-dimensional scoring
-        """
-        # Stage 1: Venture filter
-        venture_result = await self.is_venture_job(vacancy, raw_text)
-
-        if not venture_result.get("is_venture", False):
-            logger.info("Skipped non-venture job: '{}' ({})",
-                        vacancy.get('title', '?'),
-                        venture_result.get('environment_type', '?'))
-            return {
-                "score": 0,
-                "reason": f"Не venture job: {venture_result.get('environment_type', 'unknown')}. "
-                          f"Red flags: {', '.join(venture_result.get('red_flags', []))}",
-                "strengths": [],
-                "gaps": [],
-                "recommendation": "skip",
-                "venture_filter": venture_result,
-            }
-
-        # Stage 2: Deep matching
-        candidate_ctx = self._build_candidate_context()
+    async def check_top5(self, vacancy: dict) -> dict:
+        """Stage 2: Am I a top-5% candidate for this role?"""
         vacancy_text = (
             f"Вакансия: {vacancy.get('title', 'N/A')}\n"
             f"Компания: {vacancy.get('company', 'N/A')}\n"
@@ -196,26 +132,68 @@ Deal-breakers: {', '.join(p.get('deal_breakers', []))}
             f"Зарплата: {vacancy.get('salary', 'N/A')}\n"
             f"Навыки: {vacancy.get('skills', 'N/A')}\n"
             f"Требования: {vacancy.get('requirements', 'N/A')}\n"
-            f"Удалёнка: {vacancy.get('remote', 'N/A')}\n"
-            f"Контекст среды: {venture_result.get('environment_type', 'N/A')}\n"
-            f"Venture-сигналы: {', '.join(venture_result.get('venture_signals', []))}"
+            f"Удалёнка: {vacancy.get('remote', 'N/A')}"
         )
-
-        user_msg = (
-            f"=== ПРОФИЛЬ КАНДИДАТА ===\n{candidate_ctx}\n\n"
-            f"=== ВАКАНСИЯ ===\n{vacancy_text}"
-        )
-
         try:
-            result = await self.llm.chat_json(MATCH_PROMPT, user_msg)
-            result["venture_filter"] = venture_result
-            return result
+            return await self.llm.chat_json(TOP_CANDIDATE_PROMPT, vacancy_text)
         except Exception as e:
-            logger.error("Matching failed: {}", e)
+            logger.error("Top-5 check failed: {}", e)
+            return {"is_top5": False, "percentile": 100}
+
+    async def match(self, vacancy: dict, raw_text: str = "") -> dict:
+        """
+        Two-stage matching:
+        1. Hook — is there ONE thing that makes me stop and say 'wow'?
+        2. Top-5% — am I a killer candidate, not just 'one of many'?
+        """
+        # Stage 1: Hook
+        hook_result = await self.find_hook(vacancy, raw_text)
+        has_hook = hook_result.get("has_hook", False)
+        hook_strength = hook_result.get("hook_strength", 0)
+
+        if not has_hook or hook_strength < 5:
+            logger.info("No hook for '{}': {}",
+                        vacancy.get('title', '?'),
+                        hook_result.get('why_not', 'no reason'))
             return {
                 "score": 0,
-                "reason": f"Ошибка анализа: {e}",
+                "reason": hook_result.get("why_not", "Ничего не зацепило"),
                 "strengths": [],
                 "gaps": [],
                 "recommendation": "skip",
+                "hook": hook_result,
+                "top5": None,
             }
+
+        # Stage 2: Top-5% check
+        top5_result = await self.check_top5(vacancy)
+        is_top5 = top5_result.get("is_top5", False)
+        percentile = top5_result.get("percentile", 100)
+
+        if not is_top5:
+            score = max(10, 100 - percentile)  # low score for non-top5
+            logger.info("Hook found but not top-5 for '{}': percentile {}",
+                        vacancy.get('title', '?'), percentile)
+            return {
+                "score": score,
+                "reason": f"Hook: {hook_result.get('hook', '?')}. "
+                          f"Но не top-5: {top5_result.get('verdict', '?')}",
+                "strengths": [hook_result.get("hook", "")],
+                "gaps": [top5_result.get("his_weakness", "")],
+                "recommendation": "skip",
+                "hook": hook_result,
+                "top5": top5_result,
+            }
+
+        # Both stages passed — this is a real match
+        score = min(100, 60 + hook_strength * 2 + (100 - percentile))
+        return {
+            "score": score,
+            "reason": f"🎯 Hook: {hook_result.get('hook', '?')}. "
+                      f"Top-{percentile} из 100: {top5_result.get('verdict', '?')}",
+            "strengths": [hook_result.get("hook", ""), top5_result.get("his_edge", "")],
+            "gaps": [top5_result.get("his_weakness", "")] if top5_result.get("his_weakness") else [],
+            "recommendation": "strong_apply" if hook_strength >= 8 and percentile <= 3 else "apply",
+            "hook": hook_result,
+            "top5": top5_result,
+        }
