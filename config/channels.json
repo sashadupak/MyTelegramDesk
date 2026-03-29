@@ -25,6 +25,12 @@
       "enabled": true
     },
     {
+      "username": "ya_jobs_pm",
+      "name": "Яндекс нанимает — PM",
+      "category": "product_jobs",
+      "enabled": true
+    },
+    {
       "username": "morejobs",
       "name": "Больше джобсов",
       "category": "general_jobs",
@@ -43,56 +49,62 @@
       "enabled": true
     },
     {
-      "username": "ya_jobs_pm",
-      "name": "Яндекс нанимает — PM",
-      "category": "product_jobs",
-      "enabled": true
-    },
-    {
-      "username": "ask_vc",
-      "name": "Спроси VC",
-      "category": "venture",
-      "enabled": true
-    },
-    {
-      "username": "startupoftheday",
-      "name": "Стартап дня. Горный",
-      "category": "venture",
-      "enabled": true
-    },
-    {
-      "username": "cofounder_community",
-      "name": "Кофаундер — стартап-сообщество",
-      "category": "venture",
-      "enabled": true
-    },
-    {
-      "username": "disruptors_official",
-      "name": "Дизраптор",
-      "category": "venture",
-      "enabled": true
-    },
-    {
-      "username": "Startech_networking",
-      "name": "Startech Сообщество",
-      "category": "venture",
-      "enabled": true
-    },
-    {
-      "username": "techsparks",
-      "name": "TechSparks",
-      "category": "tech",
-      "enabled": true
-    },
-    {
-      "username": "aitalenthubnews",
-      "name": "AI Talent Hub",
-      "category": "ai",
-      "enabled": true
-    },
-    {
       "username": "jobsearchIT",
       "name": "Job Search IT",
+      "category": "general_jobs",
+      "enabled": true
+    },
+    {
+      "username": "mirkreatorovjob",
+      "name": "МИР КРЕАТОРОВ | Вакансии",
+      "category": "general_jobs",
+      "enabled": true
+    },
+    {
+      "username": "perezvonyu",
+      "name": "Мы вам перезвоним",
+      "category": "general_jobs",
+      "enabled": true
+    },
+    {
+      "username": "dnative_job",
+      "name": "Вакансии SMM и Digital",
+      "category": "general_jobs",
+      "enabled": true
+    },
+    {
+      "username": "remotejobss",
+      "name": "Remote Jobs",
+      "category": "remote_jobs",
+      "enabled": true
+    },
+    {
+      "username": "habr_career",
+      "name": "Хабр Карьера",
+      "category": "general_jobs",
+      "enabled": true
+    },
+    {
+      "username": "hsecareer",
+      "name": "HSE Career",
+      "category": "general_jobs",
+      "enabled": true
+    },
+    {
+      "username": "myresume_ru",
+      "name": "Вакансии и Стажировки от MyResume",
+      "category": "general_jobs",
+      "enabled": true
+    },
+    {
+      "username": "zdemcv",
+      "name": "Ждём резюме",
+      "category": "general_jobs",
+      "enabled": true
+    },
+    {
+      "username": "south_work",
+      "name": "Рабочий Парк: вакансии, стажировки",
       "category": "general_jobs",
       "enabled": true
     }
