@@ -3,7 +3,6 @@ from pathlib import Path
 from src.llm.groq_client import GroqClient
 from loguru import logger
 
-# Load identity profile
 _IDENTITY_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "identity.md"
 try:
     IDENTITY = _IDENTITY_PATH.read_text(encoding="utf-8")
@@ -12,70 +11,84 @@ except FileNotFoundError:
     logger.warning("identity.md not found at {}", _IDENTITY_PATH)
 
 
-HOOK_PROMPT = """Ты — личный карьерный advisor Александра. Ты знаешь его ГЛУБОКО — не просто резюме, а его ценности, цели, доменную экспертизу и что его реально зажигает.
+SCORE_PROMPT = """Ты — личный карьерный advisor Александра. Ты знаешь его ГЛУБОКО.
+Твоя задача — оценить вакансию как OPPORTUNITY, а не как "подхожу ли я по чеклисту".
 
-ВОТ ЕГО ПОЛНЫЙ ПРОФИЛЬ:
 {identity}
 
 ---
 
-ЗАДАЧА: Прочитай вакансию и ответь на один вопрос:
-"Есть ли здесь хотя бы ОДНА вещь, от которой Александр скажет — о, это про меня?"
+АЛГОРИТМ:
 
-Это может быть:
-- Пересечение с его доменной экспертизой (AI agents, robotics, deep tech, space, innovation)
-- Совпадение ценностей (масштаб, скорость, автономия, амбициозная команда)
-- Роль на стыке техники и бизнеса — то, где его профиль уникален
-- Компания/фаундер с track record, который резонирует
-- Задача 0→1 (новый продукт, новый рынок, новое направление)
+ШАГ 1. RED FLAGS — жёсткий стоп.
+Если в вакансии есть хотя бы один red flag из профиля → score=0, не анализируй дальше.
+Если роль из раздела "Где я НЕ выделюсь" → score=0.
 
-НЕ является hook-ом:
-- Просто "хорошая зарплата" или "удалёнка" — это гигиенические факторы
-- "Нужен Python разработчик" — он не чистый разработчик
-- Размытые фразы типа "dynamic team" без конкретики
-- Вакансия где его доменная экспертиза не даёт преимущества
+ШАГ 2. SCORING по 6 критериям (каждый 0-5):
+
+1. СВОБОДА ДЕЙСТВИЙ
+   Сигналы: "launch", "build", "new direction", "0→1", "с нуля", "innovation"
+   0 = жёсткие рамки, execution only | 5 = полная автономия
+
+2. ДОСТУП К РЕСУРСАМ
+   Корпорация/фонд/lab, бюджет, команды
+   0 = "работа за идею" | 5 = серьёзный бюджет
+
+3. БЛИЗОСТЬ К TOP MANAGEMENT
+   Кому репортит? C-level / фаундеры?
+   0 = 3+ уровня до CEO | 5 = напрямую фаундер
+
+4. НЕОПРЕДЕЛЁННОСТЬ РОЛИ (плюс для Александра!)
+   Размытое описание = можно "захватить" роль
+   0 = жёсткий JD, checklist | 5 = "ищем человека, а не должность"
+
+5. СООТВЕТСТВИЕ ДРАЙВЕРАМ
+   AI, инновации, deep tech, новые продукты, ивенты, space
+   0 = скучная индустрия | 5 = прямое попадание
+
+6. ВОЗМОЖНОСТЬ СОЗДАТЬ НАПРАВЛЕНИЕ (самый важный ×2)
+   Можно ли вырасти в юнит / продукт / бизнес?
+   0 = потолок виден | 5 = роль может стать бизнесом
+
+ШАГ 3. HIDDEN OPPORTUNITIES — ищи неявные сигналы:
+- "начинаем новое направление", "формируем команду", "экспериментируем"
+- Компания недавно привлекла инвестиции, делает R&D, запускает lab
+- Роль настолько размыта что можно role-carve — предложить себя как решение
+Эти сигналы дают +3-5 бонусных баллов.
+
+ШАГ 4. TOP-5% CHECK:
+Представь 100 кандидатов на эту роль.
+Его суперсила: стык техники + бизнеса + стартап-опыт.
+Его слабость: нет стабильного корп трека.
+Он top-5 ТОЛЬКО если роль ценит нелинейный путь и предпринимательство выше стабильности.
+
+ИТОГО:
+score = (сумма 6 критериев) + (критерий 6 ещё раз, он ×2) + (hidden opportunity bonus)
+Максимум = 35 + 5 = 40. Нормализуй в 0-100.
 
 Верни JSON:
 {{
-  "has_hook": true/false,
-  "hook": "Что именно зацепило — конкретно (или null)",
-  "domain_match": "Какая из его доменных экспертиз пересекается (или null)",
-  "values_match": "Какие ценности совпадают (или null)",
-  "hook_strength": <1-10>,
-  "why_not": "Если нет hook-а — почему это не его (или null)"
-}}
-
-Будь ОЧЕНЬ избирателен. Hook должен быть только там, где есть РЕАЛЬНОЕ пересечение с его уникальным профилем.
-Отвечай ТОЛЬКО валидным JSON."""
-
-
-TOP5_PROMPT = """Ты — венчурный рекрутер с 10-летним опытом. Ты нанимал сотни людей и умеешь отличить реальный top-кандидата от "ну, подходит наверное".
-
-ПРОФИЛЬ АЛЕКСАНДРА:
-{identity}
-
----
-
-ЗАДАЧА: На эту вакансию пришло 100 откликов. Александр — в top-5?
-
-ПРАВИЛА:
-1. Представь 100 реальных кандидатов. Кто они? Какой типичный профиль?
-2. Где его УНИКАЛЬНОЕ сочетание (инженер + продукт + инновации + AI) даёт преимущество?
-3. Где ему объективно НЕ ХВАТАЕТ по сравнению с другими?
-4. Есть ли в вакансии требования из его раздела "Где я НЕ top-5%"?
-5. Есть ли в вакансии пересечение с его разделом "Где я top-5%"?
-
-Верни JSON:
-{{
+  "score": <0-100>,
+  "red_flags_found": ["flag1"] или [],
+  "dimensions": {{
+    "freedom": {{"score": <0-5>, "signal": "что увидел"}},
+    "resources": {{"score": <0-5>, "signal": "..."}},
+    "proximity_to_top": {{"score": <0-5>, "signal": "..."}},
+    "role_ambiguity": {{"score": <0-5>, "signal": "..."}},
+    "driver_fit": {{"score": <0-5>, "signal": "..."}},
+    "new_direction_potential": {{"score": <0-5>, "signal": "..."}}
+  }},
+  "hidden_opportunities": ["сигнал 1"] или [],
+  "hidden_bonus": <0-5>,
   "is_top5": true/false,
-  "percentile": <1-100>,
-  "typical_competitors": "2-3 типичных профиля конкурентов",
-  "his_edge": "Конкретное преимущество (или null)",
-  "his_weakness": "Конкретная слабость (или null)",
-  "verdict": "Одно предложение — почему top-5 или нет"
+  "top5_reason": "почему top-5 или нет",
+  "hook": "Одно предложение — что делает эту вакансию opportunity для Александра (или null)",
+  "strategy": "role_carving | opportunity_driven | platform_entry | standard",
+  "recommendation": "strong_apply | apply | skip",
+  "reason": "2-3 предложения итоговой оценки"
 }}
 
-Top-5 из 100 — это серьёзно. Давай только там, где его профиль РЕАЛЬНО уникален для этой роли.
+Будь ЖЁСТКИМ. Skip 95% вакансий. Показывай только те, где Александр — уникальное решение.
 Отвечай ТОЛЬКО валидным JSON."""
 
 
@@ -84,8 +97,7 @@ class VacancyMatcher:
         self.llm = llm
         self.profile = profile
         self.resume_text = resume_text
-        self.hook_prompt = HOOK_PROMPT.format(identity=IDENTITY)
-        self.top5_prompt = TOP5_PROMPT.format(identity=IDENTITY)
+        self.score_prompt = SCORE_PROMPT.format(identity=IDENTITY)
 
     @staticmethod
     def extract_resume_text(pdf_path: Path) -> str:
@@ -100,19 +112,9 @@ class VacancyMatcher:
             logger.error("Failed to parse PDF {}: {}", pdf_path, e)
         return "\n".join(text_parts)
 
-    async def find_hook(self, vacancy: dict, raw_text: str = "") -> dict:
+    async def match(self, vacancy: dict, raw_text: str = "") -> dict:
+        """Single-pass deep analysis: red flags → 6D scoring → hidden opportunities → top-5%."""
         text = raw_text if raw_text else (
-            f"{vacancy.get('title', '')}\n{vacancy.get('company', '')}\n"
-            f"{vacancy.get('requirements', '')}\n{vacancy.get('skills', '')}"
-        )
-        try:
-            return await self.llm.chat_json(self.hook_prompt, text)
-        except Exception as e:
-            logger.error("Hook detection failed: {}", e)
-            return {"has_hook": False, "hook_strength": 0}
-
-    async def check_top5(self, vacancy: dict, raw_text: str = "") -> dict:
-        vacancy_text = raw_text if raw_text else (
             f"Вакансия: {vacancy.get('title', 'N/A')}\n"
             f"Компания: {vacancy.get('company', 'N/A')}\n"
             f"Локация: {vacancy.get('location', 'N/A')}\n"
@@ -121,74 +123,44 @@ class VacancyMatcher:
             f"Требования: {vacancy.get('requirements', 'N/A')}\n"
             f"Удалёнка: {vacancy.get('remote', 'N/A')}"
         )
+
         try:
-            return await self.llm.chat_json(self.top5_prompt, vacancy_text)
+            result = await self.llm.chat_json(self.score_prompt, text)
+
+            # Ensure required fields
+            result.setdefault("score", 0)
+            result.setdefault("recommendation", "skip")
+            result.setdefault("reason", "")
+            result.setdefault("hook", None)
+            result.setdefault("is_top5", False)
+            result.setdefault("red_flags_found", [])
+            result.setdefault("hidden_opportunities", [])
+            result.setdefault("dimensions", {})
+            result.setdefault("strategy", "standard")
+
+            # Override: if not top-5, force skip
+            if not result["is_top5"] and result["score"] > 0:
+                result["recommendation"] = "skip"
+                result["reason"] += " [Не top-5 — пропускаем]"
+
+            score = result["score"]
+            rec = result["recommendation"]
+            logger.info("'{}' — score:{} rec:{} strategy:{} top5:{}",
+                        vacancy.get("title", "?"), score, rec,
+                        result["strategy"], result["is_top5"])
+
+            return result
+
         except Exception as e:
-            logger.error("Top-5 check failed: {}", e)
-            return {"is_top5": False, "percentile": 100}
-
-    async def match(self, vacancy: dict, raw_text: str = "") -> dict:
-        # Stage 1: Hook — is there something that resonates with my identity?
-        hook_result = await self.find_hook(vacancy, raw_text)
-        has_hook = hook_result.get("has_hook", False)
-        hook_strength = hook_result.get("hook_strength", 0)
-
-        if not has_hook or hook_strength < 6:
-            reason_parts = []
-            if hook_result.get("why_not"):
-                reason_parts.append(hook_result["why_not"])
-            if not hook_result.get("domain_match"):
-                reason_parts.append("Нет пересечения по доменной экспертизе")
-            if not hook_result.get("values_match"):
-                reason_parts.append("Ценности не совпадают")
-
-            logger.info("No hook for '{}': {}",
-                        vacancy.get('title', '?'),
-                        '; '.join(reason_parts) or 'no match')
+            logger.error("Matching failed: {}", e)
             return {
                 "score": 0,
-                "reason": '; '.join(reason_parts) or "Ничего не зацепило",
-                "strengths": [],
-                "gaps": [],
+                "reason": f"Ошибка: {e}",
                 "recommendation": "skip",
-                "hook": hook_result,
-                "top5": None,
+                "hook": None,
+                "is_top5": False,
+                "red_flags_found": [],
+                "hidden_opportunities": [],
+                "dimensions": {},
+                "strategy": "standard",
             }
-
-        # Stage 2: Top-5% — am I a killer candidate?
-        top5_result = await self.check_top5(vacancy, raw_text)
-        is_top5 = top5_result.get("is_top5", False)
-        percentile = top5_result.get("percentile", 100)
-
-        if not is_top5:
-            score = max(10, 100 - percentile)
-            logger.info("Hook but not top-5 for '{}': {} (percentile {})",
-                        vacancy.get('title', '?'), top5_result.get('verdict', ''), percentile)
-            return {
-                "score": score,
-                "reason": f"Hook: {hook_result.get('hook', '?')}. "
-                          f"Но не top-5: {top5_result.get('verdict', '?')}",
-                "strengths": [hook_result.get("hook", "")],
-                "gaps": [top5_result.get("his_weakness", "")],
-                "recommendation": "skip",
-                "hook": hook_result,
-                "top5": top5_result,
-            }
-
-        # Both passed
-        score = min(100, 60 + hook_strength * 2 + (100 - percentile))
-        return {
-            "score": score,
-            "reason": f"🎯 {hook_result.get('hook', '?')}. "
-                      f"Домен: {hook_result.get('domain_match', '?')}. "
-                      f"Top-{percentile}: {top5_result.get('verdict', '?')}",
-            "strengths": [
-                hook_result.get("hook", ""),
-                hook_result.get("domain_match", ""),
-                top5_result.get("his_edge", ""),
-            ],
-            "gaps": [top5_result.get("his_weakness", "")] if top5_result.get("his_weakness") else [],
-            "recommendation": "strong_apply" if hook_strength >= 8 and percentile <= 3 else "apply",
-            "hook": hook_result,
-            "top5": top5_result,
-        }

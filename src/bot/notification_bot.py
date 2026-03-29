@@ -80,14 +80,18 @@ class NotificationBot:
         for i, item in enumerate(items, 1):
             v = item["vacancy"]
             mr = item["match_result"]
-            hook = mr.get("hook", {})
-            top5 = mr.get("top5", {})
             app_id = item["application_id"]
             score = mr.get("score", 0)
             rec = mr.get("recommendation", "")
+            strategy = mr.get("strategy", "")
             rec_emoji = {"strong_apply": "🔥", "apply": "✅"}.get(rec, "✅")
+            strat_emoji = {"role_carving": "🔪", "opportunity_driven": "🚀",
+                           "platform_entry": "🏗"}.get(strategy, "")
 
-            text += f"<b>{i}. {rec_emoji} {v.get('title', '?')}</b>\n"
+            text += f"<b>{i}. {rec_emoji} {v.get('title', '?')}</b>"
+            if strat_emoji:
+                text += f" {strat_emoji}"
+            text += "\n"
             text += f"   🏢 {v.get('company', '?')}"
             if v.get("salary"):
                 text += f" · 💰 {v['salary']}"
@@ -95,21 +99,35 @@ class NotificationBot:
                 text += " · 🏠"
             text += "\n"
 
-            # Hook — what caught attention
-            if hook.get("hook"):
-                text += f"   🪝 {hook['hook']}\n"
+            # Hook
+            hook = mr.get("hook")
+            if hook:
+                text += f"   🪝 {hook}\n"
 
-            # Domain & values match
-            if hook.get("domain_match"):
-                text += f"   🎯 Домен: {hook['domain_match']}\n"
+            # Key dimensions (only high scores)
+            dims = mr.get("dimensions", {})
+            dim_labels = {
+                "freedom": "🔓 Свобода",
+                "new_direction_potential": "🚀 Новое направление",
+                "role_ambiguity": "🌀 Можно захватить",
+                "driver_fit": "🎯 Драйверы",
+            }
+            high_dims = []
+            for key, label in dim_labels.items():
+                d = dims.get(key, {})
+                if d.get("score", 0) >= 4:
+                    high_dims.append(f"{label}: {d.get('signal', '')[:40]}")
+            if high_dims:
+                text += f"   {' · '.join(high_dims[:2])}\n"
 
-            # Top-5 edge
-            if top5 and top5.get("his_edge"):
-                text += f"   ⚔️ Преимущество: {top5['his_edge']}\n"
+            # Hidden opportunities
+            hidden = mr.get("hidden_opportunities", [])
+            if hidden:
+                text += f"   💎 {hidden[0]}\n"
 
-            # Percentile
-            if top5 and top5.get("percentile"):
-                text += f"   🏆 Top-{top5['percentile']} из 100\n"
+            # Top-5 reason
+            if mr.get("top5_reason"):
+                text += f"   🏆 {mr['top5_reason'][:60]}\n"
 
             # Contact
             if v.get("contact"):

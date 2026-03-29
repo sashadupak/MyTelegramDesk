@@ -78,14 +78,15 @@ class LocalWorker:
             )
             return
 
-        # 2. Match against profile (two-stage: venture filter + deep scoring)
+        # 2. Score as opportunity (6D + hidden + top-5%)
         match_result = await self.matcher.match(vacancy_data, raw_text=raw_text)
         score = match_result.get("score", 0)
         rec = match_result.get("recommendation", "skip")
-        logger.info("Vacancy #{} '{}' — score: {} [{}]",
-                     vacancy_id, vacancy_data.get("title", "?"), score, rec)
+        strategy = match_result.get("strategy", "")
+        logger.info("#{} '{}' — score:{} rec:{} strategy:{}",
+                     vacancy_id, vacancy_data.get("title", "?"), score, rec, strategy)
 
-        if score < settings.match_threshold:
+        if rec == "skip" or score < settings.match_threshold:
             await session.post(
                 f"{SERVER_API}/api/vacancies/{vacancy_id}/result",
                 json={
