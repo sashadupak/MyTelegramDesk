@@ -62,14 +62,19 @@ class LocalWorker:
 
         logger.info("Processing vacancy #{} ...", vacancy_id)
 
+        channel = vacancy.get("channel_username", "")
+
         # 1. Extract structured data
         vacancy_data = await self.extractor.extract(raw_text)
         if not vacancy_data:
-            logger.debug("Vacancy #{}: not a vacancy, skipping", vacancy_id)
-            # Mark as processed (score=0)
+            logger.debug("#{}: not a vacancy (channel: @{})", vacancy_id, channel)
             await session.post(
                 f"{SERVER_API}/api/vacancies/{vacancy_id}/result",
-                json={"match_result": {"score": 0, "reason": "Not a vacancy"}},
+                json={
+                    "match_result": {"score": 0, "reason": "Not a vacancy"},
+                    "is_vacancy": False,
+                    "channel_username": channel,
+                },
             )
             return
 
@@ -83,7 +88,12 @@ class LocalWorker:
         if score < settings.match_threshold:
             await session.post(
                 f"{SERVER_API}/api/vacancies/{vacancy_id}/result",
-                json={"vacancy_data": vacancy_data, "match_result": match_result},
+                json={
+                    "vacancy_data": vacancy_data,
+                    "match_result": match_result,
+                    "is_vacancy": True,
+                    "channel_username": channel,
+                },
             )
             return
 

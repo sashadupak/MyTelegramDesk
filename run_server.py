@@ -106,6 +106,17 @@ class ServerWorker:
         vacancy_id = int(request.match_info["id"])
         data = await request.json()
 
+        # Track channel vacancy stats for auto-disable
+        channel_username = data.get("channel_username", "")
+        if channel_username:
+            if data.get("is_vacancy") is False:
+                disabled = await self.db.record_non_vacancy(channel_username, threshold=50)
+                if disabled:
+                    logger.warning("Auto-disabled channel @{}: 50 consecutive non-vacancies",
+                                   channel_username)
+            elif data.get("is_vacancy") is True or data.get("vacancy_data"):
+                await self.db.record_vacancy_hit(channel_username)
+
         # Update vacancy with extracted data
         if data.get("vacancy_data"):
             vd = data["vacancy_data"]

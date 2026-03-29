@@ -15,6 +15,10 @@ async def init_db(db_path: Path) -> None:
                 category TEXT,
                 enabled INTEGER DEFAULT 1,
                 last_message_id INTEGER DEFAULT 0,
+                consecutive_non_vacancy INTEGER DEFAULT 0,
+                total_parsed INTEGER DEFAULT 0,
+                total_vacancies INTEGER DEFAULT 0,
+                disabled_reason TEXT,
                 created_at TEXT DEFAULT (datetime('now'))
             );
 
@@ -53,6 +57,20 @@ async def init_db(db_path: Path) -> None:
             CREATE INDEX IF NOT EXISTS idx_vacancies_status ON vacancies(status);
             CREATE INDEX IF NOT EXISTS idx_vacancies_score ON vacancies(match_score);
         """)
+
+        # Migrate: add new columns if missing
+        for col, default in [
+            ("consecutive_non_vacancy", "0"),
+            ("total_parsed", "0"),
+            ("total_vacancies", "0"),
+            ("disabled_reason", "NULL"),
+        ]:
+            try:
+                await db.execute(f"ALTER TABLE channels ADD COLUMN {col} DEFAULT {default}")
+                await db.commit()
+            except Exception:
+                pass  # column already exists
+
         logger.info("Database initialized at {}", db_path)
 
 
@@ -93,6 +111,47 @@ class Database:
                 (message_id, username)
             )
             await db.commit()
+
+    async def record_vacancy_hit(self, username: str) -> None:
+        """Message was a vacancy — reset consecutive counter, bump totals."""
+        async with self._connect() as db:
+            await db.execute(
+                """UPDATE channels SET
+                   consecutive_non_vacancy = 0,
+                   total_parsed = total_parsed + 1,
+                   total_vacancies = total_vacancies + 1
+                   WHERE username = ?""",
+                (username,)
+            )
+            await db.commit()
+
+    async def record_non_vacancy(self, username: str, threshold: int = 50) -> bool:
+        """Message was NOT a vacancy. Returns True if channel should be disabled."""
+        async with self._connect() as db:
+            await db.execute(
+                """UPDATE channels SET
+                   consecutive_non_vacancy = consecutive_non_vacancy + 1,
+                   total_parsed = total_parsed + 1
+                   WHERE username = ?""",
+                (username,)
+            )
+            await db.commit()
+
+            cursor = await db.execute(
+                "SELECT consecutive_non_vacancy, total_parsed, total_vacancies FROM channels WHERE username = ?",
+                (username,)
+            )
+            row = await cursor.fetchone()
+            if row and row[0] >= threshold:
+                await db.execute(
+                    """UPDATE channels SET enabled = 0,
+                       disabled_reason = ? WHERE username = ?""",
+                    (f"Auto-disabled: {row[0]} consecutive non-vacancies "
+                     f"(total: {row[1]} parsed, {row[2]} vacancies)", username)
+                )
+                await db.commit()
+                return True
+        return False
 
     # --- Vacancies ---
 
