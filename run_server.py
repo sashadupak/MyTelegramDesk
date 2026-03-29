@@ -186,6 +186,7 @@ class ServerWorker:
         await self.bot.app.initialize()
         await self.bot.app.start()
         await self.bot.app.updater.start_polling(drop_pending_updates=True)
+        self.bot.start_digest_loop()
         logger.info("Telegram bot polling started")
 
         # Start HTTP API
