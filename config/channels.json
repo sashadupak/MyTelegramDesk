@@ -1,8 +1,8 @@
 {
   "channels": [
     {
-      "username": "example_jobs_channel",
-      "name": "Example IT Jobs",
+      "username": "forproducts",
+      "name": "For Products",
       "category": "IT",
       "enabled": true
     }

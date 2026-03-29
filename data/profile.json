@@ -1,31 +1,42 @@
 {
-  "name": "Имя Фамилия",
-  "title": "Senior Software Engineer",
-  "intro": "Опытный разработчик с 5+ годами опыта в backend-разработке. Специализируюсь на Python, Go, микросервисной архитектуре и облачных решениях. Ищу интересные проекты с возможностью роста.",
+  "name": "Александр Дупак",
+  "title": "Innovation & Product Lead",
+  "intro": "Начал свой путь как инженер-робототехник в ИТМО, реализовав проекты по нелинейным регуляторам, мат моделированию, компьютерному зрению. Опыт продакт менеджера в Атом, выстраивание кросс-функциональных команд цифровых сервисов в быстрорастущей корпоративной среде, а также развитие направления автоматизации управления требованиями с ИИ. Образование и развитие в области инноваций через программы ВШЭ, МФТИ и венчурной экосистемы Altair Capital в рамках AltaLab. Фокус на отраслевой технической экспертизе, развитии в направлениях Claude Agents и прикладных решений через AI Talent Hub, а также New Space Economy на базе ETH Zurich.",
   "skills": [
+    "Product Management",
+    "AI/LLM (Claude Agents, Groq)",
     "Python",
-    "Go",
-    "PostgreSQL",
+    "Robotics & Computer Vision",
+    "Cross-functional Team Leadership",
+    "Delivery Management",
+    "Innovation Management",
+    "Business Development & Partnerships",
+    "Agile / PMI-ACP",
+    "Unit Economics & CustDev",
     "Docker",
-    "Kubernetes",
-    "AWS",
-    "REST API",
-    "Microservices"
+    "ROS",
+    "Git",
+    "Startup Launch & GTM Strategy"
   ],
-  "experience_years": 5,
-  "languages": ["Русский", "English"],
-  "location": "Москва",
+  "experience_years": 7,
+  "languages": ["Русский", "English (C1)"],
+  "location": "Санкт-Петербург",
   "remote_ok": true,
   "salary_min": null,
-  "linkedin_url": "https://linkedin.com/in/your-profile",
+  "linkedin_url": "https://linkedin.com/in/sashadupak",
   "preferred_roles": [
-    "Backend Developer",
-    "Software Engineer",
-    "Tech Lead",
-    "DevOps Engineer"
+    "Product Manager",
+    "Innovation Lead",
+    "AI Product Manager",
+    "Product Owner",
+    "Business Development Manager",
+    "Program Manager",
+    "Technical Product Manager",
+    "Startup CTO / CPO"
   ],
   "deal_breakers": [
     "Только офис без удалёнки",
-    "PHP legacy проекты"
+    "PHP legacy проекты",
+    "Отсутствие AI/инновационной составляющей"
   ]
 }

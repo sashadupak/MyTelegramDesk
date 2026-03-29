@@ -60,16 +60,14 @@ class Database:
     def __init__(self, db_path: Path):
         self.db_path = db_path
 
-    async def _connect(self) -> aiosqlite.Connection:
-        db = await aiosqlite.connect(self.db_path)
-        db.row_factory = aiosqlite.Row
-        return db
+    def _connect(self) -> aiosqlite.Connection:
+        return aiosqlite.connect(self.db_path)
 
     # --- Channels ---
 
     async def upsert_channel(self, username: str, name: str = None,
                              category: str = None, enabled: bool = True) -> None:
-        async with await self._connect() as db:
+        async with self._connect() as db:
             await db.execute(
                 """INSERT INTO channels (username, name, category, enabled)
                    VALUES (?, ?, ?, ?)
@@ -80,7 +78,8 @@ class Database:
             await db.commit()
 
     async def get_enabled_channels(self) -> list[dict]:
-        async with await self._connect() as db:
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
             cursor = await db.execute(
                 "SELECT * FROM channels WHERE enabled = 1"
             )
@@ -88,7 +87,7 @@ class Database:
             return [dict(r) for r in rows]
 
     async def update_last_message_id(self, username: str, message_id: int) -> None:
-        async with await self._connect() as db:
+        async with self._connect() as db:
             await db.execute(
                 "UPDATE channels SET last_message_id = ? WHERE username = ?",
                 (message_id, username)
@@ -100,7 +99,7 @@ class Database:
     async def insert_vacancy(self, channel_username: str, message_id: int,
                              raw_text: str, **kwargs) -> int | None:
         """Insert vacancy, return its ID. Returns None if duplicate."""
-        async with await self._connect() as db:
+        async with self._connect() as db:
             try:
                 cursor = await db.execute(
                     """INSERT INTO vacancies
@@ -120,7 +119,7 @@ class Database:
                 return None
 
     async def update_vacancy_match(self, vacancy_id: int, score: int, reason: str) -> None:
-        async with await self._connect() as db:
+        async with self._connect() as db:
             await db.execute(
                 "UPDATE vacancies SET match_score = ?, match_reason = ?, status = 'matched' WHERE id = ?",
                 (score, reason, vacancy_id)
@@ -128,7 +127,7 @@ class Database:
             await db.commit()
 
     async def update_vacancy_status(self, vacancy_id: int, status: str) -> None:
-        async with await self._connect() as db:
+        async with self._connect() as db:
             await db.execute(
                 "UPDATE vacancies SET status = ? WHERE id = ?",
                 (status, vacancy_id)
@@ -136,7 +135,8 @@ class Database:
             await db.commit()
 
     async def get_vacancy(self, vacancy_id: int) -> dict | None:
-        async with await self._connect() as db:
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
             cursor = await db.execute(
                 "SELECT * FROM vacancies WHERE id = ?", (vacancy_id,)
             )
@@ -144,7 +144,8 @@ class Database:
             return dict(row) if row else None
 
     async def get_new_vacancies(self) -> list[dict]:
-        async with await self._connect() as db:
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
             cursor = await db.execute(
                 "SELECT * FROM vacancies WHERE status = 'new' ORDER BY created_at"
             )
@@ -155,7 +156,7 @@ class Database:
 
     async def create_application(self, vacancy_id: int, cover_letter: str,
                                  company_info: str) -> int:
-        async with await self._connect() as db:
+        async with self._connect() as db:
             cursor = await db.execute(
                 """INSERT INTO applications (vacancy_id, cover_letter, company_info)
                    VALUES (?, ?, ?)""",
@@ -166,7 +167,7 @@ class Database:
 
     async def update_application_decision(self, application_id: int,
                                           decision: str, comment: str = None) -> None:
-        async with await self._connect() as db:
+        async with self._connect() as db:
             await db.execute(
                 """UPDATE applications
                    SET user_decision = ?, user_comment = ?, decided_at = ?
@@ -176,7 +177,8 @@ class Database:
             await db.commit()
 
     async def get_application_by_vacancy(self, vacancy_id: int) -> dict | None:
-        async with await self._connect() as db:
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
             cursor = await db.execute(
                 "SELECT * FROM applications WHERE vacancy_id = ?", (vacancy_id,)
             )
